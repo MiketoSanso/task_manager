@@ -28,5 +28,4 @@ class CommentRequest(PaginationAwareRequest):
 class CreateCommentRequestPayload(BaseModel):
     """Payload для создания комментария"""
 
-    task_id: int
     content: str

@@ -46,7 +46,7 @@ async def get_all_comments(
 @log(logger)
 async def create_comment(
         use_case: FromDishka[CreateCommentUseCase],
-        payload: CreateCommentRequestPayload = Depends(),
+        payload: CreateCommentRequestPayload,
         current_user: AccessTokenData = Depends(get_current_user),
 ) -> CommentResponse:
     """Создать комментарий к задаче"""
