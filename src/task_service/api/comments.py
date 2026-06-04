@@ -41,6 +41,7 @@ async def get_all_comments(
 @comments_router.post(
     "",
     response_model=CommentResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 @inject
 @log(logger)
@@ -51,11 +52,10 @@ async def create_comment(
 ) -> CommentResponse:
     """Создать комментарий к задаче"""
     try:
-        return CommentResponse(
-            await use_case.execute(
-                comment = CreateComment(user_name=current_user.username, **payload.model_dump()),
-            )
+        result = await use_case.execute(
+            comment = CreateComment(user_name=current_user.username, **payload.model_dump()),
         )
+        return CommentResponse(**result.model_dump())
     except Exception as e:
         logger.error(f"Exception creating comments: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

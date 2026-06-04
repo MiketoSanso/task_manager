@@ -19,6 +19,12 @@ services:
       - tasks
     ports:
       - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     build:
       context: .
     pull_policy: build

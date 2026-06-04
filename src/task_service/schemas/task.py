@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class TaskStatus(str, Enum):
@@ -50,6 +50,17 @@ class CreateTask(BaseTask):
     """Схема для создания задачи."""
 
     created_by: str
+
+    @field_validator("due_date")
+    @classmethod
+    def strip_timezone(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        if v.tzinfo:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
 
 
 class UpdateTask(BaseTask):

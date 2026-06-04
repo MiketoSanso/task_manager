@@ -14,8 +14,8 @@ class BaseComment(BaseModel):
 
 class CreateComment(BaseComment):
     """Схема для создания комментария."""
-    pass
-    """(Новые переменные не требуются)"""
+
+    task_id: int
 
 
 class UpdateComment(BaseComment):

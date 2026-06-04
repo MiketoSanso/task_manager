@@ -29,3 +29,4 @@ class CreateCommentRequestPayload(BaseModel):
     """Payload для создания комментария"""
 
     content: str
+    task_id: int
