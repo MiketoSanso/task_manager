@@ -127,3 +127,14 @@ async def delete_task(
         await use_case.execute(task_id=task_id)
     except TaskNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@tasks_router.get(
+"/statistics"
+)
+@inject
+@log(logger)
+async def get_tasks(
+
+) -> None:
+    pass
