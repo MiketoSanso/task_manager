@@ -72,5 +72,7 @@ class UpdateTaskUseCase:
         # Отправляем событие в Kafka (для аналитики)
         await self._kafka_publisher.publish_task_event(updated_task, event_type)
 
+        await self._cache.delete_task_statistics()
+
         logger.info(f"Task updated: id={updated_task.id}, event={event_type}")
         return updated_task

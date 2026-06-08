@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.core.logger import get_logger, log
 from task_service.infrastructure.postgres.models import Task
+from task_service.schemas.api.tasks import TaskStatisticsResponse
 from task_service.schemas.task import CreateTask, TaskFilters, TaskSchema, UpdateTask
 
 logger = get_logger(__name__)
@@ -162,3 +163,23 @@ class TaskRepository:
         )
         result = await session.execute(query)
         return {row[0]: row[1] for row in result.fetchall()}
+
+    @log(logger)
+    async def get_tasks_count_by_priority(self, session: AsyncSession) -> dict[str, int]:
+        query = (
+            select(self._tasks_collection.priority, func.count(self._tasks_collection.id))
+            .group_by(self._tasks_collection.priority)
+        )
+        result = await session.execute(query)
+        return {row[0]: row[1] for row in result.fetchall()}
+
+    @log(logger)
+    async def get_tasks_count_by_assignee(self, session: AsyncSession) -> dict[str, int]:
+        query = (
+            select(self._tasks_collection.assignee, func.count(self._tasks_collection.id))
+            .group_by(self._tasks_collection.assignee)
+        )
+        result = await session.execute(query)
+        return {row[0]: row[1] for row in result.fetchall()}
+
+

@@ -56,5 +56,7 @@ class CreateTaskUseCase:
         # Отправляем событие в Kafka (для аналитики)
         await self._kafka_publisher.publish_task_event(created_task, TaskEventType.CREATED)
 
+        await self._cache.delete_task_statistics()
+
         logger.info(f"Task created: id={created_task.id}, title={created_task.title}")
         return created_task

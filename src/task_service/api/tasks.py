@@ -8,6 +8,7 @@ from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.core.logger import get_logger, log
 from task_service.domain.use_cases.create_task import CreateTaskUseCase
 from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
+from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
 from task_service.domain.use_cases.update_task import UpdateTaskUseCase
 from task_service.schemas.api.pagination import Pagination
@@ -15,7 +16,7 @@ from task_service.schemas.api.tasks import (
     CreateTaskRequestPayload,
     TaskResponse,
     TasksRequest,
-    UpdateTaskRequestPayload,
+    UpdateTaskRequestPayload, TaskStatisticsResponse,
 )
 from task_service.schemas.auth import AccessTokenData
 from task_service.schemas.task import CreateTask, TaskFilters, UpdateTask
@@ -42,7 +43,20 @@ async def get_all_tasks(
         )
         return Pagination(limit=request.limit, offset=request.offset, items=records, total=total)
     except Exception as e:
-        logger.error(f"Error getting tasks: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@tasks_router.get(
+"/statistics"
+)
+@inject
+@log(logger)
+async def get_task_statistics(
+    use_case: FromDishka[GetTaskStatisticsUseCase],
+) -> TaskStatisticsResponse:
+    try:
+        return await use_case.execute()
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
@@ -127,14 +141,3 @@ async def delete_task(
         await use_case.execute(task_id=task_id)
     except TaskNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-
-@tasks_router.get(
-"/statistics"
-)
-@inject
-@log(logger)
-async def get_tasks(
-
-) -> None:
-    pass

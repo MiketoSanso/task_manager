@@ -32,6 +32,7 @@ class DeleteTaskUseCase:
             await self._repository.delete_task(session, task_id)
 
         # Удаляем из кэша
+        await self._cache.delete_task_statistics()
         await self._cache.delete_task(task_id)
 
         # Отправляем событие в Kafka (для аналитики)

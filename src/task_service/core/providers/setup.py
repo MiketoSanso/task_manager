@@ -8,6 +8,7 @@ from task_service.core.config import settings
 from task_service.domain.metrics.use_case import GetTasksMetricsUseCase
 from task_service.domain.use_cases.create_task import CreateTaskUseCase
 from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
+from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
 from task_service.domain.use_cases.update_task import UpdateTaskUseCase
 from task_service.infrastructure.postgres.database import Database
@@ -104,6 +105,15 @@ class UseCaseProvider(Provider):
         cache: RedisRepository,
     ) -> GetTasksUseCase:
         return GetTasksUseCase(database, repository, cache)
+
+    @provide
+    def get_get_task_statistics(
+        self,
+        database: Database,
+        repository: TaskRepository,
+        cache: RedisRepository,
+    ) -> GetTaskStatisticsUseCase:
+        return GetTaskStatisticsUseCase(database, repository, cache)
 
     @provide
     def get_update_task(

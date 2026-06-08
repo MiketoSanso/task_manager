@@ -5,6 +5,7 @@ from redis.asyncio import Redis
 
 from task_service.core.config import settings
 from task_service.core.logger import get_logger
+from task_service.schemas.api.tasks import TaskStatisticsResponse
 from task_service.schemas.task import TaskSchema
 
 logger = get_logger(__name__)
@@ -43,6 +44,25 @@ class RedisRepository:
             value=task.model_dump_json(),
             ex=ttl,
         )
+
+    async def set_task_statistics(self, statistics: TaskStatisticsResponse, ex: int | None = None) -> None:
+        """Сохранить задачу в кэш."""
+        ttl = ex or settings.REDIS_CACHE_TTL
+        await self._redis.set(
+            name="tasks:statistics",
+            value=statistics.model_dump_json(),
+            ex=ttl,
+        )
+
+    async def get_task_statistics(self) -> TaskStatisticsResponse | None:
+        data = await self._redis.get("tasks:statistics")
+        if not data:
+            return None
+        return TaskStatisticsResponse.model_validate_json(data)
+
+    async def delete_task_statistics(self) -> None:
+        await self._redis.delete("tasks:statistics")
+        logger.info("CACHE INVALIDATED: tasks:statistics")
 
     async def delete_task(self, task_id: int) -> None:
         """Удалить задачу из кэша."""
