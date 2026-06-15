@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from task_service.core.logger import get_logger, log
 from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.task_repository import TaskRepository
@@ -8,7 +10,7 @@ from task_service.schemas.task import (
     TaskEventType,
     TaskNotificationMessage,
     TaskSchema,
-    UpdateTask,
+    UpdateTask, TaskStatus, TaskPriority,
 )
 
 logger = get_logger(__name__)
@@ -39,9 +41,18 @@ class UpdateTaskUseCase:
         updated_by: str,
     ) -> TaskSchema:
         """Обновить задачу и отправить уведомление."""
-        async with self._database.session() as session:
-            # Получаем старую задачу для сравнения
+        async with (self._database.session() as session):
             old_task = await self._repository.get_one_task(session, task_id)
+
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+            if old_task.status == TaskStatus.TODO and now - old_task.updated_at > timedelta(days=3) and old_task.priority != TaskPriority.CRITICAL:
+                priority_map = {
+                    TaskPriority.LOW: TaskPriority.MEDIUM,
+                    TaskPriority.MEDIUM: TaskPriority.HIGH,
+                    TaskPriority.HIGH: TaskPriority.CRITICAL,
+                }
+                task.priority = priority_map[old_task.priority]
 
             updated_task = await self._repository.update_task(session, task_id, task)
 
