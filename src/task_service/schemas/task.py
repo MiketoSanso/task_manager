@@ -71,7 +71,6 @@ class UpdateTask(BaseTask):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
 
-
 class TaskSchema(BaseTask):
     """Схема задачи из БД."""
 

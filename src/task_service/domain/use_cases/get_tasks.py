@@ -30,6 +30,12 @@ class GetTasksUseCase:
             return await self._repository.get_all_tasks(session=session, filters=filters)
 
     @log(logger)
+    async def execute_for_escalation(self) -> list[TaskSchema]:
+        """Получить список задач с фильтрацией."""
+        async with self._database.session() as session:
+            return await self._repository.get_tasks_for_escalation(session=session)
+
+    @log(logger)
     async def get_by_id(self, task_id: int) -> TaskSchema:
         """Получить задачу по ID (с кэшированием)."""
         # Пробуем получить из кэша

@@ -1,24 +1,29 @@
-from arq.cron import cron
+from datetime import datetime, timezone
 
-@cron("0 9 * * *")
+from task_service.core.logger import setup_logging, get_logger
+from task_service.core.providers.setup import container
+from task_service.domain.use_cases.get_tasks import GetTasksUseCase
+from task_service.domain.use_cases.update_task import UpdateTaskUseCase
+from task_service.schemas.task import UpdateTask, TaskFilters, TaskStatus
+
+logger = get_logger(__name__)
+
 async def escalate_old_pending_tasks(ctx):
-    """
-    Находит задачи, находящиеся в статусе "pending" более 3 дней,
-    и повышает их приоритет.
-    low -> medium
-    medium -> high
-    """
-    # Здесь будет ваша бизнес-логика:
-    # 1. Подключиться к базе данных.
-    # 2. Найти задачи, которые находятся в статусе "pending" более 3 дней.
-    # 3. Для каждой такой задачи:
-    #    - Повысить приоритет (low -> medium, medium -> high).
-    #    - Сохранить изменения в базе данных.
-    #    - Опубликовать событие `task.priority_escalated` в Kafka.
-    #    - Отправить уведомление assignee.
-    print("Запуск задачи escalate_old_pending_tasks...")
-    # Примерная логика (вам нужно будет адаптировать ее под ваш проект)
-    # db = ctx.get("db") # Получение доступа к БД, если он настроен в worker'е
-    # tasks = await db.query(...)
-    # for task in tasks:
-    #     ...
+    """CRON задача для эскалации задач."""
+    setup_logging()
+    logger.info("Starting send_pending_notifications_task")
+
+    async with container() as nested_container:
+        use_case = await nested_container.get(GetTasksUseCase)
+
+        tasks = use_case.execute_for_escalation()
+
+        use_case = await nested_container.get(UpdateTaskUseCase)
+
+        for task in tasks:
+            update_data = UpdateTask()
+            time = datetime.now(timezone.utc).isoformat()
+            use_case.execute(task=update_data ,task_id=task.id, updated_by=time)
+
+    logger.info(f"escalate_old_pending_tasks completed.")
+

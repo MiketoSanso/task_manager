@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Type
 
 from sqlalchemy import and_, delete, func, insert, or_, select, update
@@ -8,9 +8,12 @@ from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.core.logger import get_logger, log
 from task_service.infrastructure.postgres.models import Task
 from task_service.schemas.api.tasks import TaskStatisticsResponse
-from task_service.schemas.task import CreateTask, TaskFilters, TaskSchema, UpdateTask
+from task_service.schemas.task import CreateTask, TaskFilters, TaskSchema, UpdateTask, TaskStatus, TaskPriority
 
 logger = get_logger(__name__)
+ESCALATE_STATUS = TaskStatus.TODO
+DEADLINE_DAYS = 3
+MAX_TASK_PRIORITY = TaskPriority.CRITICAL
 
 
 class TaskRepository:
@@ -41,10 +44,12 @@ class TaskRepository:
         query = (
             select(self._tasks_collection)
             .where(and_(*query_filters))
-            .limit(filters.limit)
             .offset(filters.offset)
             .order_by(self._tasks_collection.created_at.desc())
         )
+
+        if filters.limit:
+            query = query.limit(filters.limit)
 
         db_rows = await session.scalars(query)
 
@@ -53,6 +58,30 @@ class TaskRepository:
 
         #list comprehension
         return [TaskSchema.model_validate(obj=obj) for obj in db_rows.all()], total or 0
+
+    @log(logger)
+    async def get_tasks_for_escalation(
+            self,
+            session: AsyncSession,
+    ) -> list[TaskSchema]:
+        now = datetime.now(timezone.utc)
+        deadline = now - timedelta(days=DEADLINE_DAYS)
+
+        query = (
+            select(self._tasks_collection)
+            .where(
+                and_(
+                    self._tasks_collection.status == ESCALATE_STATUS,
+                    self._tasks_collection.updated_at <= deadline,
+                    self._tasks_collection.priority != MAX_TASK_PRIORITY,
+                )
+            )
+            .order_by(self._tasks_collection.updated_at.asc())
+        )
+
+        db_rows = await session.scalars(query)
+
+        return [TaskSchema.model_validate(obj=obj) for obj in db_rows.all()]
 
     @log(logger)
     async def create_task(
@@ -151,15 +180,6 @@ class TaskRepository:
         query = (
             select(self._tasks_collection.status, func.count(self._tasks_collection.id))
             .group_by(self._tasks_collection.status)
-        )
-        result = await session.execute(query)
-        return {row[0]: row[1] for row in result.fetchall()}
-
-    @log(logger)
-    async def get_tasks_count_by_priority(self, session: AsyncSession) -> dict[str, int]:
-        query = (
-            select(self._tasks_collection.priority, func.count(self._tasks_collection.id))
-            .group_by(self._tasks_collection.priority)
         )
         result = await session.execute(query)
         return {row[0]: row[1] for row in result.fetchall()}

@@ -46,26 +46,22 @@ class UpdateTaskUseCase:
 
             now = datetime.now(timezone.utc).replace(tzinfo=None)
 
+            new_update_task = task
             if old_task.status == TaskStatus.TODO and now - old_task.updated_at > timedelta(days=3) and old_task.priority != TaskPriority.CRITICAL:
                 priority_map = {
                     TaskPriority.LOW: TaskPriority.MEDIUM,
                     TaskPriority.MEDIUM: TaskPriority.HIGH,
                     TaskPriority.HIGH: TaskPriority.CRITICAL,
                 }
-                task.priority = priority_map[old_task.priority]
+                new_update_task = UpdateTask(priority=priority_map[old_task.priority])
 
-            updated_task = await self._repository.update_task(session, task_id, task)
+            updated_task = await self._repository.update_task(session, task_id, new_update_task)
 
         # Обновляем кэш
         await self._cache.delete_task(task_id)
         await self._cache.set_task(updated_task)
 
-        # Определяем тип события
-        event_type = TaskEventType.UPDATED
-        if task.status and old_task.status != task.status:
-            event_type = TaskEventType.STATUS_CHANGED
-        elif task.assignee and old_task.assignee != task.assignee:
-            event_type = TaskEventType.ASSIGNED
+        event_type = self.__detect_event_type()
 
         # Отправляем уведомление в RabbitMQ (для нотификаций)
         notification = TaskNotificationMessage(
@@ -87,3 +83,18 @@ class UpdateTaskUseCase:
 
         logger.info(f"Task updated: id={updated_task.id}, event={event_type}")
         return updated_task
+
+    def __escalate(self):
+
+    def __detect_event_type(
+            self,
+            old_update_task: TaskSchema,
+            new_update_task: TaskSchema,
+    ):
+        return TaskEventType.UPDATED
+        if new_update_task.status and old_update_task.status != new_update_task.status:
+            return TaskEventType.STATUS_CHANGED
+        elif new_update_task.assignee and old_update_task.assignee != new_update_task.assignee:
+            return TaskEventType.ASSIGNED
+        elif not old_update_task.assignee and not old_update_task.status and not old_update_task.priority:
+            return TaskEventType.PRIORITY_ESCALATED
